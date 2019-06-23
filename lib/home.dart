@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:english_words/english_words.dart';
 import 'package:http/http.dart' as http;
+
+import 'model/RedditPost.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -11,6 +14,8 @@ class HomeState extends State<Home> {
   final _suggestions = <WordPair>[];
   final Set<WordPair> _saved = new Set<WordPair>();
   final _biggerFont = const TextStyle(fontSize: 18.0);
+  final String baseUrl = "https://www.reddit.com/r/FlutterDev/hot.json";
+  String after;
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +31,30 @@ class HomeState extends State<Home> {
     return ListView.builder(itemBuilder: (context, i) {
       if (needFetch(i)) {
         fetchWords();
+        fetchData();
       }
       return _buildRow(_suggestions[i]);
     });
+  }
+
+  Future<List<RedditPost>> fetchData() async {
+    var url = baseUrl + "?" + "limit=10";
+    var response = await http.get(Uri.encodeFull(Uri.encodeFull(url)));
+    if (response.statusCode == 200) {
+      var responseJson  = json.decode(response.body);
+      var data = responseJson['data'];
+      after = data['after'];
+      var children = data['children'] as List;
+      List<RedditPost> posts = children.map((e) => RedditPost.fromJson(e['data'])).toList();
+
+      posts.forEach((p) {
+        print(p.title);
+      });
+
+      return posts;
+    } else {
+      return List();
+    }
   }
 
   bool needFetch(int index) {
