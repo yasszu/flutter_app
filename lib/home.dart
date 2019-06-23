@@ -11,11 +11,13 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
-  final _suggestions = <WordPair>[];
-  final Set<WordPair> _saved = new Set<WordPair>();
+  final Set<String> _saved = new Set<String>();
   final _biggerFont = const TextStyle(fontSize: 18.0);
   final String baseUrl = "https://www.reddit.com/r/FlutterDev/hot.json";
-  String after;
+
+  final List<RedditPost> _items = new List();
+
+  String _after;
 
   @override
   Widget build(BuildContext context) {
@@ -27,29 +29,46 @@ class HomeState extends State<Home> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   Widget _buildSuggestions() {
-    return ListView.builder(itemBuilder: (context, i) {
-      if (needFetch(i)) {
-        fetchWords();
-        fetchData();
-      }
-      return _buildRow(_suggestions[i]);
-    });
+    return ListView.builder(
+        itemCount: _items.length,
+        itemBuilder: (context, i) {
+          if (needFetch(i)) {
+            fetchData();
+          }
+          return _buildRow(_items[i]);
+        });
   }
 
   Future<List<RedditPost>> fetchData() async {
-    var url = baseUrl + "?" + "limit=10";
+    var url = baseUrl + "?" + "limit=20";
     var response = await http.get(Uri.encodeFull(Uri.encodeFull(url)));
     if (response.statusCode == 200) {
       var responseJson  = json.decode(response.body);
       var data = responseJson['data'];
-      after = data['after'];
+      _after = data['after'];
       var children = data['children'] as List;
-      List<RedditPost> posts = children.map((e) => RedditPost.fromJson(e['data'])).toList();
+      List<RedditPost> posts = children.map((e) =>
+          RedditPost.fromJson(e['data'])
+      ).toList();
 
-      posts.forEach((p) {
-        print(p.title);
-      });
+      if (posts.length > 0) {
+        setState(() {
+          print(_items.length);
+          _items.addAll(posts);
+        });
+      }
 
       return posts;
     } else {
@@ -58,21 +77,18 @@ class HomeState extends State<Home> {
   }
 
   bool needFetch(int index) {
-    return index >= _suggestions.length;
+    print("index: " + index.toString());
+    return (index + 1) >= _items.length;
   }
 
-  void fetchWords() {
-    _suggestions.addAll(generateWordPairs().take(10));
-  }
+  Widget _buildRow(RedditPost post) {
+    final String key = post.name;
+    final bool alreadySaved = _saved.contains(key);
 
-  Widget _buildRow(WordPair pair) {
-    final String word =
-        pair.asPascalCase + "#" + _suggestions.length.toString();
-    final bool alreadySaved = _saved.contains(pair);
     return Column(children: [
       ListTile(
         title: Text(
-          word,
+          post.title,
           style: _biggerFont,
         ),
         trailing: new Icon(
@@ -82,9 +98,9 @@ class HomeState extends State<Home> {
         onTap: () {
           setState(() {
             if (alreadySaved) {
-              _saved.remove(pair);
+              _saved.remove(key);
             } else {
-              _saved.add(pair);
+              _saved.add(key);
             }
           });
         },
