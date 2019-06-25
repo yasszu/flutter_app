@@ -20,7 +20,7 @@ class HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Startup Name Generator'),
+        title: Text('r/FlutterDev'),
       ),
       body: _buildListView(),
     );
@@ -79,14 +79,24 @@ class HomeState extends State<Home> {
     final bool alreadySaved = _saved.contains(key);
     return Column(children: [
       ListTile(
-        title: Text(
+        leading: Container(
+            width: 80,
+            child: post.thumbnail == "self" || post.thumbnail == "default"
+                ? FlutterLogo(size: 80.0)
+                : Image.network(
+                    post.thumbnail,
+                    fit: BoxFit.cover,
+                  )),
+        title: Text(post.author),
+        subtitle: Text(
           post.title,
           style: _biggerFont,
         ),
-        trailing: new Icon(
+        trailing: Icon(
           alreadySaved ? Icons.favorite : Icons.favorite_border,
           color: alreadySaved ? Colors.red : null,
         ),
+        isThreeLine: true,
         onTap: () {
           setState(() {
             if (alreadySaved) {
