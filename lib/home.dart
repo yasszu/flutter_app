@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 
+import 'api/RedditAPi.dart';
 import 'model/RedditPost.dart';
+import 'model/RedditPosts.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -12,7 +12,6 @@ class Home extends StatefulWidget {
 class HomeState extends State<Home> {
   final Set<String> _saved = new Set<String>();
   final _biggerFont = const TextStyle(fontSize: 18.0);
-  final String baseUrl = "https://www.reddit.com/r/FlutterDev/hot.json";
   final List<RedditPost> _items = new List();
   String _after;
 
@@ -48,26 +47,15 @@ class HomeState extends State<Home> {
         });
   }
 
-  Future<List<RedditPost>> fetchData() async {
+  void fetchData() async {
     var after = _after == null ? "" : _after;
-    var url = baseUrl + "?" + "limit=20" + "&after=" + after;
-    var response = await http.get(Uri.encodeFull(Uri.encodeFull(url)));
-    if (response.statusCode == 200) {
-      var responseJson = json.decode(response.body);
-      var data = responseJson['data'];
-      _after = data['after'];
-      var children = data['children'] as List;
-      List<RedditPost> posts =
-          children.map((e) => RedditPost.fromJson(e['data'])).toList();
-      if (posts.length > 0) {
-        setState(() {
-          _items.addAll(posts);
+    var response = RedditAPI().getTop(after);
+    response.then((RedditPosts res) => {
+          setState(() {
+            _items.addAll(res.posts);
+            _after = res.after;
+          })
         });
-      }
-      return posts;
-    } else {
-      return List();
-    }
   }
 
   bool needFetch(int index) {
