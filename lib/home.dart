@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'api/RedditAPi.dart';
 import 'model/RedditPost.dart';
@@ -10,7 +11,6 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
-  final Set<String> _saved = new Set<String>();
   final _biggerFont = const TextStyle(fontSize: 18.0);
   final List<RedditPost> _items = new List();
   String _after;
@@ -28,7 +28,7 @@ class HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    fetchData();
+    _fetchData();
   }
 
   @override
@@ -40,14 +40,14 @@ class HomeState extends State<Home> {
     return ListView.builder(
         itemCount: _items.length,
         itemBuilder: (context, i) {
-          if (needFetch(i)) {
-            fetchData();
+          if (_needFetch(i)) {
+            _fetchData();
           }
           return _buildRow(_items[i]);
         });
   }
 
-  void fetchData() async {
+  void _fetchData() async {
     var after = _after == null ? "" : _after;
     var response = RedditAPI().getTop(after);
     response.then((RedditPosts res) => {
@@ -58,13 +58,12 @@ class HomeState extends State<Home> {
         });
   }
 
-  bool needFetch(int index) {
+  bool _needFetch(int index) {
     return (index + 1) >= _items.length;
   }
 
   Widget _buildRow(RedditPost post) {
     final String key = post.name;
-    final bool alreadySaved = _saved.contains(key);
     return Column(children: [
       ListTile(
         leading: Container(
@@ -80,22 +79,21 @@ class HomeState extends State<Home> {
           post.title,
           style: _biggerFont,
         ),
-        trailing: Icon(
-          alreadySaved ? Icons.favorite : Icons.favorite_border,
-          color: alreadySaved ? Colors.red : null,
-        ),
         isThreeLine: true,
         onTap: () {
-          setState(() {
-            if (alreadySaved) {
-              _saved.remove(key);
-            } else {
-              _saved.add(key);
-            }
-          });
+          _launchURL(post.url);
         },
       ),
       Divider()
     ]);
   }
+
+  _launchURL(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
+
 }
