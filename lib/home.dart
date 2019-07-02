@@ -19,6 +19,14 @@ class HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.home),
+          tooltip: 'home',
+          onPressed: () {
+            _reset();
+            _fetchData();
+          },
+        ),
         title: Text('r/FlutterDev'),
       ),
       body: _buildListView(),
@@ -49,13 +57,19 @@ class HomeState extends State<Home> {
 
   void _fetchData() async {
     var after = _after == null ? "" : _after;
-    var response = RedditAPI().getTop(after);
-    response.then((RedditPosts res) => {
+    RedditAPI().getTop(after).then((RedditPosts response) => {
           setState(() {
-            _items.addAll(res.posts);
-            _after = res.after;
+            _items.addAll(response.posts);
+            _after = response.after;
           })
         });
+  }
+
+  void _reset() {
+    setState(() {
+      _after = "";
+      _items.clear();
+    });
   }
 
   bool _needFetch(int index) {
@@ -63,7 +77,6 @@ class HomeState extends State<Home> {
   }
 
   Widget _buildRow(RedditPost post) {
-    final String key = post.name;
     return Column(children: [
       ListTile(
         leading: Container(
