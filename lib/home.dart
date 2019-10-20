@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:english_words/english_words.dart';
-import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+
+import 'api/RedditAPi.dart';
+import 'model/RedditPost.dart';
+import 'model/RedditPosts.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -8,62 +11,102 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
-  final _suggestions = <WordPair>[];
-  final Set<WordPair> _saved = new Set<WordPair>();
   final _biggerFont = const TextStyle(fontSize: 18.0);
+  final List<RedditPost> _items = new List();
+  String _after;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Startup Name Generator'),
+        leading: IconButton(
+          icon: Icon(Icons.home),
+          tooltip: 'home',
+          onPressed: () {
+            _reset();
+            _fetchData();
+          },
+        ),
+        title: Text('r/FlutterDev'),
       ),
-      body: _buildSuggestions(),
+      body: _buildListView(),
     );
   }
 
-  Widget _buildSuggestions() {
-    return ListView.builder(itemBuilder: (context, i) {
-      if (needFetch(i)) {
-        fetchWords();
-      }
-      return _buildRow(_suggestions[i]);
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Widget _buildListView() {
+    return ListView.builder(
+        itemCount: _items.length,
+        itemBuilder: (context, i) {
+          if (_needFetch(i)) {
+            _fetchData();
+          }
+          return _buildRow(_items[i]);
+        });
+  }
+
+  void _fetchData() async {
+    var after = _after == null ? "" : _after;
+    RedditAPI().getTop(after).then((RedditPosts response) => {
+          setState(() {
+            _items.addAll(response.posts);
+            _after = response.after;
+          })
+        });
+  }
+
+  void _reset() {
+    setState(() {
+      _after = "";
+      _items.clear();
     });
   }
 
-  bool needFetch(int index) {
-    return index >= _suggestions.length;
+  bool _needFetch(int index) {
+    return (index + 1) >= _items.length;
   }
 
-  void fetchWords() {
-    _suggestions.addAll(generateWordPairs().take(10));
-  }
-
-  Widget _buildRow(WordPair pair) {
-    final String word =
-        pair.asPascalCase + "#" + _suggestions.length.toString();
-    final bool alreadySaved = _saved.contains(pair);
+  Widget _buildRow(RedditPost post) {
     return Column(children: [
       ListTile(
-        title: Text(
-          word,
+        leading: Container(
+            width: 80,
+            child: post.thumbnail == "self" || post.thumbnail == "default"
+                ? FlutterLogo(size: 80.0)
+                : Image.network(
+                    post.thumbnail,
+                    fit: BoxFit.cover,
+                  )),
+        title: Text(post.author),
+        subtitle: Text(
+          post.title,
           style: _biggerFont,
         ),
-        trailing: new Icon(
-          alreadySaved ? Icons.favorite : Icons.favorite_border,
-          color: alreadySaved ? Colors.red : null,
-        ),
+        isThreeLine: true,
         onTap: () {
-          setState(() {
-            if (alreadySaved) {
-              _saved.remove(pair);
-            } else {
-              _saved.add(pair);
-            }
-          });
+          _launchURL(post.url);
         },
       ),
       Divider()
     ]);
   }
+
+  _launchURL(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
+
 }
